@@ -1,4 +1,7 @@
-use std::{sync::{mpsc, Arc, Mutex}, thread};
+use std::{
+    sync::{mpsc, Arc, Mutex},
+    thread,
+};
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
@@ -33,7 +36,7 @@ impl ThreadPool {
 
 struct Worker {
     id: usize,
-    thread: thread::JoinHandle<()>
+    thread: Option<thread::JoinHandle<()>>,
 }
 
 impl Worker {
@@ -44,7 +47,20 @@ impl Worker {
             job();
         });
 
-        Worker { id, thread }
+        Worker {
+            id,
+            thread: Some(thread),
+        }
     }
-    
+}
+
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        for workers in &mut self.workers {
+            println!("Shutting down worker {}", workers.id);
+            if let Some(thread) = workers.thread.take() {
+                thread.join().unwrap();
+            }
+        }
+    }
 }
